@@ -5,4 +5,4 @@
 ---
 ## 실습 코드
 ### 캐릭터 창의 스크롤 이동 기능
-- [Managers.cs](https://github.com/201710783/Test/blob/main/EDDA%20Test/Assets/Script/ScrollBar.cs)
+- [ScrollBar.cs](https://github.com/201710783/Test/blob/main/EDDA%20Test/Assets/Script/ScrollBar.cs)
