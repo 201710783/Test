@@ -1145,7 +1145,7 @@ GameObject:
   - component: {fileID: 681247930187161882}
   - component: {fileID: 4222288544760204432}
   m_Layer: 5
-  m_Name: ScrollBar
+  m_Name: ScrollRect
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1224,8 +1224,8 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 4298371380392448158}
-  - {fileID: 8907919803862431963}
   - {fileID: 4495295680434178894}
+  - {fileID: 8907919803862431963}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}

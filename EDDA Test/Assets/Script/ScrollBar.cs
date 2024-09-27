@@ -7,30 +7,48 @@ using UnityEngine.EventSystems;
 
 public class ScrollBar : MonoBehaviour, IBeginDragHandler, IEndDragHandler
 {
-    public int characterNumer;      //(임시) 현재 가지고 있는 캐릭터의 수를 표시
-    public GameObject prefab;        //(임시)캐릭터 칸의 역할을 하는 오브젝트, Resources.Load<GameObject>를 이용하여 가져오는 것도 가능
-    public GameObject content;      //자식으로 가진 캐릭터 칸을 배열해주는 오브젝트, GetComponentInChildren을 이용하여 가져오는 것도 가능
-    int slotCount;                  //현재 가지고 있는 캐릭터 수를 int로 저장하기 위한 변수
+    [SerializeField] int characterNumer;      //(임시)현재 가지고 있는 캐릭터의 수를 표시
+    [SerializeField] GameObject prefab;       //캐릭터 칸의 역할을 하는 오브젝트
+    [SerializeField] GameObject content;      //자식으로 가진 캐릭터 칸을 배열해주는 오브젝트
 
-    public Scrollbar scrollbar;     //GetComponentInChildren을 이용하여 가져오는 것도 가능
-    public ScrollRect scrollrect;   //this.GetComponent로 가져오는 것도 가능
-    public Button frontButton;      //버튼을 public으로 구현 public을 사용하지 않고 부모 오브젝트인 canvas를 거쳐
-    public Button backButton;       //GetComponentsInChildren등을 이용하여 가져오는 것도 가능.
-                                    //단, 모든 GetComponent등의 무거운 작업은 Start에서 1번만 실행
+    [SerializeField] Scrollbar scrollbar;     //Scrollbar를 움직이기 위한 Scrollbar.Value를 가진 오브젝트
+    [SerializeField] ScrollRect scrollrect;   //ScrollRect를 가진 오브젝트
+    [SerializeField] Button frontButton;      //FrontButton 오브젝트
+    [SerializeField] Button backButton;       //BackButton 오브젝트
+
+
+    int slotCount;                  //현재 가지고 있는 캐릭터 수를 int로 저장하기 위한 변수
 
     IEnumerator timer;              //코루틴을 종료시키기 위한 변수
     float dragTime;                 //드래그 시간을 기록하기 위한 변수
+    int dragPower;                  //드래그 시의 이동 칸 수
     Vector2 beginPoint;             //드래그 시작 위치를 확인하기 위한 변수
     Vector2 endPoint;               //드래그 종료 위치를 확인하기 위한 변수
     bool scroll;                    //스크롤 이동 중 드래그를 방지하기 위한 변수
+
+    WaitForSeconds waitTime = new WaitForSeconds(0.01f); //Scroll 코루틴의 칸 이동에 사용되는 딜레이 시간
+    float target;                   //Scroll 코루틴의 이동 목적지를 나타내는 변수
+
+
+    const int minSlotCount = 5;         //캐릭터 칸의 최소 갯수는 5개
+    const float minScrollValue = 0f;    //스크롤바의 최소 값(가장 앞의 칸 표시)
+    const float maxScrollValue = 1f;    //스크롤바의 최대 값(가장 뒤의 칸 표시)
+
+    const float shortDragTime = 0.2f;
+    const float dragTimeWeight = 10f;   //드래그 시간에 따른 dragPower 증가량
+    const float dragPointWeight = 0.002f;   //드래그 길이에 따흔 dragPower 증가량
+    const float scrollSpeed = 0.2f;     //스크롤이 이동하는 속도
+
+    const int buttonPower = 5;          //버튼을 눌렀을 떼 이동하는 칸 수
+    const int minDragPower = 1;         //드래그 시 최소 이동 칸 수
 
     void Start()
     {
         scrollrect.horizontal = false; 
         
-        if(characterNumer < 5) //캐릭터 칸의 수는 최소 5칸
+        if(characterNumer < minSlotCount) //캐릭터 칸의 수는 최소 5칸
         {
-            characterNumer = 5;
+            characterNumer = minSlotCount;
         }
 
         if (prefab != null) //Resources.Load를 이용하여 캐릭터 수에 맞춰 슬롯을 생성
@@ -77,30 +95,25 @@ public class ScrollBar : MonoBehaviour, IBeginDragHandler, IEndDragHandler
             }
 
             endPoint = eventData.position;
-            int power;
 
-            if(dragTime < 0.2) //드래그를 짧게할 경우 1칸 이동
+            if(dragTime < shortDragTime) //드래그를 짧게할 경우 1칸 이동
             {
-                power = 1;
+                dragPower = minDragPower;
             }
 
             else //드래그를 길게할 경우 드래그 시간과 크기에 비례하여 이동
             {
-                power = (int)(dragTime * 10 * Mathf.Abs(beginPoint.x - endPoint.x) / 500);
+                dragPower = (int)(dragTime * dragTimeWeight * Mathf.Abs(beginPoint.x - endPoint.x) * dragPointWeight);
             }
-
-            //Debug.Log(dragTime);
-            //Debug.Log(Mathf.Abs(beginPoint.x - endPoint.x));
-            //Debug.Log(power);
 
             if(beginPoint.x < endPoint.x) //드래그 방향에 따라 스크롤바 이동 방향 구분
             {
-                StartCoroutine(BackScroll(power));
+                StartCoroutine(BackScroll(dragPower));
             }
 
             else
             {
-                StartCoroutine(FrontScroll(power));
+                StartCoroutine(FrontScroll(dragPower));
             }
         }
     }
@@ -112,13 +125,12 @@ public class ScrollBar : MonoBehaviour, IBeginDragHandler, IEndDragHandler
         {
             yield return null;
             dragTime += Time.deltaTime;
-            //Debug.Log(dragTime);
         }
     }
 
     public void OnClickFrontButton()
     {   
-        StartCoroutine(FrontScroll(5));
+        StartCoroutine(FrontScroll(buttonPower));
     }
 
     IEnumerator FrontScroll(int count) //스크롤의 Value를 증가시키는 코루틴
@@ -127,17 +139,16 @@ public class ScrollBar : MonoBehaviour, IBeginDragHandler, IEndDragHandler
         backButton.interactable = false; 
         scroll = true;
 
-        float value = scrollbar.value; //이동거리 계산
-        float target = value + (1f / (slotCount - 5)) * count;
-        if(target >= 1)
+        target = scrollbar.value + (maxScrollValue / (slotCount - minSlotCount)) * count;
+        if(target >= maxScrollValue)
         {
-            target = 1;
+            target = maxScrollValue;
         }
 
         while(scrollbar.value < target) //반복문을 통하여 이동
         {
-            yield return new WaitForSeconds(0.01f);
-            scrollbar.value += (1f / (slotCount - 5)) / 5;
+            yield return waitTime;
+            scrollbar.value += (maxScrollValue / (slotCount - minSlotCount)) * scrollSpeed;
         }
 
         scrollbar.value = target; //스크롤 위치가 약간 어긋나는 것을 방지
@@ -148,7 +159,7 @@ public class ScrollBar : MonoBehaviour, IBeginDragHandler, IEndDragHandler
 
     public void OnClickBackButton()
     {
-        StartCoroutine(BackScroll(5));
+        StartCoroutine(BackScroll(buttonPower));
     }
 
     IEnumerator BackScroll(int count) //스크롤의 Value를 감소시키는 코루틴
@@ -157,17 +168,16 @@ public class ScrollBar : MonoBehaviour, IBeginDragHandler, IEndDragHandler
         backButton.interactable = false;
         scroll = true;
 
-        float value = scrollbar.value; //이동거리 계산
-        float target = value - (1f / (slotCount - 5)) * count;
-        if(target <= 0)
+        target = scrollbar.value - (maxScrollValue / (slotCount - minSlotCount)) * count;
+        if(target <= minScrollValue)
         {
-            target = 0;
+            target = minScrollValue;
         }
 
         while(scrollbar.value > target) //반복문을 통하여 이동
         {
-            yield return new WaitForSeconds(0.01f);
-            scrollbar.value -= (1f / (slotCount - 5)) / 5;
+            yield return waitTime;
+            scrollbar.value -= (maxScrollValue / (slotCount - minSlotCount)) * scrollSpeed;
         }
 
         scrollbar.value = target; //스크롤의 위치가 약간 어긋나는 것을 방지
@@ -179,29 +189,10 @@ public class ScrollBar : MonoBehaviour, IBeginDragHandler, IEndDragHandler
     //현재 스크롤바 위치에 따른 버튼의 비활성화 함수
     public void InteractableButton(float value)
     {
-        //마지막 칸과 그 전 칸 사이를 기준으로 front버튼의 비활성화를 구분
-        if(value > (1f / (slotCount - 5)) * (slotCount - 5.5))
-        {
-            frontButton.interactable = false;
-        }
-        
-        else
-        {
-            frontButton.interactable = true;
-        }
+        frontButton.interactable = value < (1f / (slotCount - minSlotCount)) * (slotCount - 5.5); //마지막 칸과 그 전 칸 사이를 기준으로 front버튼의 비활성화를 구분
+        backButton.interactable =  value > (1f / (slotCount - minSlotCount)) * (0.5);
 
-        //첫 칸과 그 다음 칸 사이를 기준으로 back버튼의 비활성화를 구분
-        if(value < (1f / (slotCount - 5)) * 0.5)
-        {
-            backButton.interactable = false;
-        }
-
-        else
-        {
-            backButton.interactable = true;
-        }
-
-        scroll = false;
+        scroll = false; //드래그는 활성화
     }
     
 }
